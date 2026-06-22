@@ -58,18 +58,18 @@ The chart is published as an **OCI artifact** on GHCR. Helm 3.8+ is required.
 ```sh
 # Installs the latest stable release. Defaults to secure token auth and
 # generates an auth token for you.
-helm install spyglass oci://ghcr.io/unishsys/charts/spyglass \
+helm upgrade --install spyglass oci://ghcr.io/unishsys/charts/spyglass \
   --namespace spyglass --create-namespace
 ```
 
 Pin a specific version (recommended for production), or install a pre-release:
 
 ```sh
-helm install spyglass oci://ghcr.io/unishsys/charts/spyglass \
+helm upgrade --install spyglass oci://ghcr.io/unishsys/charts/spyglass \
   --version 1.0.1 --namespace spyglass --create-namespace
 
 # pre-releases (e.g. betas) must be requested by exact version:
-helm install spyglass oci://ghcr.io/unishsys/charts/spyglass \
+helm upgrade --install spyglass oci://ghcr.io/unishsys/charts/spyglass \
   --version 1.0.0-beta --namespace spyglass --create-namespace
 ```
 
@@ -83,7 +83,7 @@ kubectl -n spyglass port-forward svc/spyglass 8081:8081   # then open http://loc
 To expose it publicly, enable the Ingress and TLS:
 
 ```sh
-helm upgrade spyglass oci://ghcr.io/unishsys/charts/spyglass --reuse-values \
+helm upgrade --install spyglass oci://ghcr.io/unishsys/charts/spyglass --reuse-values \
   --set ingress.enabled=true --set ingress.className=nginx \
   --set ingress.host=spyglass.example.com \
   --set ingress.tls.enabled=true --set ingress.tls.secretName=spyglass-tls
@@ -92,10 +92,10 @@ helm upgrade spyglass oci://ghcr.io/unishsys/charts/spyglass --reuse-values \
 **Apply your license:**
 
 ```sh
-helm upgrade spyglass oci://ghcr.io/unishsys/charts/spyglass --reuse-values \
+helm upgrade --install spyglass oci://ghcr.io/unishsys/charts/spyglass --reuse-values \
   --set license.key='<YOUR_KEY>'
 # or reference a Secret that holds a LICENSE_KEY key:
-helm upgrade spyglass oci://ghcr.io/unishsys/charts/spyglass --reuse-values \
+helm upgrade --install spyglass oci://ghcr.io/unishsys/charts/spyglass --reuse-values \
   --set license.existingSecret=my-license
 ```
 
