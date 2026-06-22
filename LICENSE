@@ -1,0 +1,81 @@
+Spyglass End User License Agreement (EULA)
+
+Copyright (c) 2026 Unish Systems. All rights reserved.
+
+IMPORTANT — READ CAREFULLY. This End User License Agreement ("Agreement") is a
+legal agreement between you (an individual or a single entity, "You") and Unish
+Systems ("Licensor") for the Spyglass software, including its container images,
+binaries, Helm charts, and documentation (collectively, the "Software"). By
+installing, copying, accessing, or otherwise using the Software, You agree to be
+bound by this Agreement. If You do not agree, do not install or use the Software.
+
+NOTE: This is a template provided for convenience and is NOT legal advice. Have
+it reviewed and adapted by qualified legal counsel before commercial use.
+
+1. EDITIONS AND LICENSE GRANT.
+   The Software is proprietary and is offered as:
+   (a) Community Edition — usable free of charge subject to the usage limits
+       enforced by the Software (e.g. a maximum number of cluster nodes), for
+       Your internal business or personal use.
+   (b) Trial — a time-limited license that temporarily lifts Community limits
+       for evaluation, expiring on the date encoded in the license key.
+   (c) Paid Editions (e.g. Pro, Enterprise) — usable per the entitlements
+       (tier, node limits, term, and seats/clusters) encoded in a license key
+       issued by Licensor against a paid, active subscription.
+   Subject to Your compliance with this Agreement (and, for Paid Editions, to
+   payment of the applicable fees), Licensor grants You a non-exclusive,
+   non-transferable, non-sublicensable, revocable license to install and use the
+   Software within Your own infrastructure, solely for Your internal use and
+   solely within the entitlements applicable to Your Edition.
+
+2. RESTRICTIONS. You shall not, and shall not permit any third party to:
+   (a) sell, resell, rent, lease, sublicense, distribute, or host the Software
+       as a service offering to third parties;
+   (b) copy, modify, translate, or create derivative works of the Software,
+       except as expressly permitted by applicable law that cannot be waived;
+   (c) reverse engineer, decompile, or disassemble the Software, or attempt to
+       derive its source code, except to the extent applicable law expressly
+       permits despite this limitation;
+   (d) remove, disable, circumvent, or tamper with any license key verification,
+       usage metering, or other technical limitation in the Software, or use a
+       license key not issued to You;
+   (e) remove or alter any proprietary notices or marks on the Software.
+
+3. OWNERSHIP. The Software is licensed, not sold. Licensor and its licensors
+   retain all right, title, and interest in and to the Software, including all
+   intellectual property rights. No rights are granted except as expressly set
+   out in this Agreement.
+
+4. SUBSCRIPTIONS AND FEES. Paid Editions require an active subscription. License
+   keys are valid only for their encoded term and entitlements. Upon expiration,
+   non-renewal, or cancellation, Your rights revert to the Community Edition and
+   its usage limits. Fees are non-refundable except as required by law.
+
+5. DATA AND TELEMETRY. The Software runs in Your infrastructure and connects to
+   Your Kubernetes cluster using credentials You provide. License keys are
+   verified offline. The Software may collect limited anonymous operational
+   telemetry, which You can disable via configuration. See PRIVACY.md.
+
+6. TERM AND TERMINATION. This Agreement is effective until terminated. It
+   terminates automatically if You breach it. Upon termination You must cease
+   all use of the Software and destroy all copies. Sections 2, 3, 7, 8, and 9
+   survive termination.
+
+7. DISCLAIMER OF WARRANTY. THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE",
+   WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+   TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+   NONINFRINGEMENT. YOU BEAR THE ENTIRE RISK OF USING THE SOFTWARE.
+
+8. LIMITATION OF LIABILITY. TO THE MAXIMUM EXTENT PERMITTED BY LAW, LICENSOR
+   SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR
+   PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, DATA, OR GOODWILL, ARISING OUT OF OR
+   RELATED TO THIS AGREEMENT OR THE SOFTWARE. LICENSOR'S TOTAL AGGREGATE
+   LIABILITY SHALL NOT EXCEED THE FEES YOU PAID FOR THE SOFTWARE IN THE TWELVE
+   (12) MONTHS PRECEDING THE CLAIM.
+
+9. GENERAL. This Agreement is governed by the laws of the jurisdiction
+   designated by Licensor (to be specified), without regard to conflict-of-laws
+   rules. If any provision is unenforceable, the remainder stays in effect. This
+   Agreement is the entire agreement between the parties regarding the Software.
+
+Contact: legal@spyglass.sh

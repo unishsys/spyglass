@@ -1,0 +1,61 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/unishsys/spyglass
+  # Empty defaults to the chart appVersion (pinned, immutable). Override to pin
+  # a specific tag/digest. Avoid "latest" in production.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8081
+
+# Authentication. Spyglass has full cluster read/write access, so the SECURE
+# default is `token`: an auth token is auto-generated (and kept stable across
+# upgrades) unless you supply one. Use `none` ONLY for throwaway/local clusters.
+auth:
+  mode: token # none | token | proxy-header
+  token: "" # explicit bearer token; if empty in token mode, one is generated
+  existingSecret: "" # Secret holding key AUTH_TOKEN (overrides .token)
+  proxyHeader: X-Forwarded-User
+
+# Offline license. Empty = Community tier (free, up to 10 nodes). Paste a signed
+# license key here, or point at a Secret that holds a LICENSE_KEY key.
+license:
+  key: ""
+  existingSecret: "" # Secret holding key LICENSE_KEY (overrides .key)
+
+# Where the in-app "start a trial / upgrade" prompts link to.
+upgradeUrl: https://spyglass.sh/pricing
+
+# Optional anonymous usage ping. Set true to disable.
+telemetryDisabled: false
+
+# CORS. The SPA is same-origin (served by the same binary), so this is usually
+# unnecessary. Set explicit comma-separated origins if you call the API
+# cross-origin. Empty = not set (backend default).
+cors:
+  allowedOrigins: ""
+
+# Ingress — controller-agnostic (uses ingressClassName + standard fields, no
+# vendor annotations). Terminate TLS at the ingress or via tls.secretName.
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: ""
+
+# Extra environment variables passed to the container (list of {name,value}).
+extraEnv: []
+
+resources:
+  requests:
+    memory: "64Mi"
+    cpu: "25m"
+  limits:
+    memory: "128Mi"
+    cpu: "100m"

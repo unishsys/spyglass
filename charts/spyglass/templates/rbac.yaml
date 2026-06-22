@@ -1,0 +1,100 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spyglass
+  namespace: {{ .Release.Namespace }}
+---
+# ClusterRole granting the full set of read/write operations the app performs.
+#
+# NOTE: This is broad, cluster-wide access. The app is a cluster dashboard:
+# it lists pods/nodes/namespaces across the whole cluster and lets the user
+# target ANY namespace for configmaps/deployments/services. Cluster scope is
+# therefore appropriate here. This can be tightened to specific namespaces
+# (Role + RoleBinding per namespace) in a later phase if/when the app is
+# constrained to a known set of namespaces.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: spyglass
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "create", "update", "patch"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "create", "delete"]
+# EndpointSlices back the "which pods serve this service" view (overview
+# endpoint health + the describe-service tool). discovery.k8s.io/v1 replaces the
+# deprecated core/v1 Endpoints. Read-only.
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["get", "list", "watch"]
+# Secrets access is sensitive. The app lists secret metadata and the DATA KEY
+# NAMES (secret VALUES are masked in the API layer and never leave the cluster),
+# and now also supports editing/deleting secrets via the generic object API —
+# write access (update/patch/delete) is therefore included here. No watch.
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["statefulsets", "daemonsets"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: ["gateway.networking.k8s.io"]
+  resources: ["gateways", "httproutes"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: ["gateway.networking.k8s.io"]
+  resources: ["gatewayclasses"]
+  verbs: ["get", "list"]
+# cert-manager (TLS certificates) and external-dns (DNS records) — read-only, so
+# the dashboard can surface the domain → DNS → TLS → gateway → route → service
+# chain. All optional: the app degrades gracefully when these CRDs are absent.
+- apiGroups: ["cert-manager.io"]
+  resources: ["certificates", "clusterissuers", "issuers"]
+  verbs: ["get", "list"]
+- apiGroups: ["externaldns.k8s.io"]
+  resources: ["dnsendpoints"]
+  verbs: ["get", "list"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: spyglass
+subjects:
+- kind: ServiceAccount
+  name: spyglass
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: spyglass
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,23 @@
+Spyglass {{ .Chart.AppVersion }} installed in namespace {{ .Release.Namespace }}.
+
+{{ if eq .Values.auth.mode "none" -}}
+⚠  AUTH_MODE=none — the dashboard is UNAUTHENTICATED. Anyone who can reach it has
+   full cluster access. Set `auth.mode=token` (the default) before exposing it.
+{{- else if eq .Values.auth.mode "token" -}}
+Auth: a Bearer token is required. Read it with:
+
+  kubectl -n {{ .Release.Namespace }} get secret {{ .Values.auth.existingSecret | default (include "spyglass.secretName" .) }} -o jsonpath='{.data.AUTH_TOKEN}' | base64 -d ; echo
+{{- else -}}
+Auth: proxy-header mode — your upstream proxy must set {{ .Values.auth.proxyHeader }}.
+{{- end }}
+
+License: {{ if or .Values.license.key .Values.license.existingSecret }}a license key is applied.{{ else }}Community tier (free, up to 10 nodes). Beyond the cap, changes are blocked until you start a trial or upgrade.{{ end }}
+  Apply/renew a license:  helm upgrade {{ .Release.Name }} <chart> --reuse-values --set license.key=<KEY>
+
+Access:
+{{- if .Values.ingress.enabled }}
+  https://{{ .Values.ingress.host }}/
+{{- else }}
+  kubectl -n {{ .Release.Namespace }} port-forward svc/spyglass {{ .Values.service.port }}:{{ .Values.service.port }}
+  then open  http://localhost:{{ .Values.service.port }}/
+{{- end }}

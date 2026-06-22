@@ -1,0 +1,11 @@
+# Helm packaging output
+dist/
+*.tgz
+.cr-release-packages/
+
+# OS / editor cruft
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/

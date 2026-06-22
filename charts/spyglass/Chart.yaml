@@ -1,0 +1,13 @@
+apiVersion: v2
+name: spyglass
+description: Spyglass — a user-friendly web dashboard for your Kubernetes cluster.
+type: application
+# Chart version and the app/image version it deploys. Bump together on release.
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://spyglass.sh
+sources:
+  - https://github.com/unishsys/spyglass
+maintainers:
+  - name: Spyglass
+    email: support@spyglass.sh

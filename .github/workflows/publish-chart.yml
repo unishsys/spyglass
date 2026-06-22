@@ -1,0 +1,118 @@
+name: Publish Helm chart
+
+# Packages the Spyglass Helm chart and pushes it to GHCR as an OCI artifact:
+#   oci://ghcr.io/unishsys/charts/spyglass
+#
+# Triggers:
+#   - release published:  the enterprise release pipeline creates a `vX.Y.Z`
+#                         GitHub Release in this repo (via a PAT, so this event
+#                         fires); we package the chart at that version, push it
+#                         OCI, and attach the .tgz to the release.
+#   - workflow_dispatch:  manual re-publish at an explicit version.
+#   - pull_request / push to charts/**:  lint only (no publish).
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Chart/app version without leading v (e.g. 1.0.1)"
+        required: true
+  pull_request:
+    paths: ["charts/**"]
+  push:
+    branches: [master]
+    paths: ["charts/**"]
+
+concurrency:
+  group: publish-chart-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # upload the packaged chart to the GitHub release
+  packages: write # push the OCI chart to GHCR
+
+env:
+  REGISTRY: ghcr.io
+  # Chart lands at oci://ghcr.io/unishsys/charts/spyglass (chart name = spyglass).
+  OCI_REPO: ghcr.io/unishsys/charts
+
+jobs:
+  lint:
+    name: Lint chart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Helm lint
+        run: helm lint charts/spyglass
+      - name: Template render (smoke test)
+        run: helm template spyglass charts/spyglass >/dev/null
+
+  publish:
+    name: Package and push (OCI)
+    # Only publish on an actual release or a manual dispatch — plain chart
+    # pushes/PRs just lint.
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      # Resolve the version from the triggering event into a strictly-validated
+      # output. Untrusted-ish inputs (tag name, manual input) are read via env,
+      # never interpolated into the script, and must match semver before use.
+      - name: Resolve version
+        id: ver
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$EVENT_NAME" = "release" ]; then
+            v="$RELEASE_TAG"
+          else
+            v="$INPUT_VERSION"
+          fi
+          v="${v#v}" # strip a leading "v" if present
+          if ! printf '%s' "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+            echo "::error::invalid version '$v' (expected semver like 1.0.1 or 1.0.0-beta)"
+            exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Publishing chart version $v"
+
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" \
+            | helm registry login "$REGISTRY" -u "$GHCR_USER" --password-stdin
+
+      - name: Package chart
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          mkdir -p dist
+          helm package charts/spyglass \
+            --version "$VERSION" \
+            --app-version "$VERSION" \
+            --destination dist
+
+      - name: Push chart (OCI)
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          helm push "dist/spyglass-${VERSION}.tgz" "oci://${OCI_REPO}"
+
+      - name: Attach chart to the GitHub release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          gh release upload "$TAG" "dist/spyglass-${VERSION}.tgz" --clobber
