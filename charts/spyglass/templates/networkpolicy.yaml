@@ -1,0 +1,34 @@
+{{- if .Values.networkPolicy.enabled }}
+---
+# Restricts inbound traffic to the dashboard port. Egress is intentionally left
+# open — the app must reach the Kubernetes API server, metrics-server, and
+# (optionally) Ollama.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: spyglass
+  labels:
+    {{- include "spyglass.labels" . | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "spyglass.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+      {{- with .Values.networkPolicy.allowedNamespaces }}
+      from:
+        {{- range . }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ . }}
+        {{- end }}
+      {{- end }}
+{{- end }}

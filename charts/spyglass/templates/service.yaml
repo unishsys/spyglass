@@ -5,6 +5,15 @@ metadata:
   name: spyglass
   labels:
     {{- include "spyglass.labels" . | nindent 4 }}
+  {{- if or .Values.commonAnnotations .Values.service.annotations }}
+  annotations:
+    {{- with .Values.commonAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.service.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
 spec:
   type: {{ .Values.service.type }}
   ports:

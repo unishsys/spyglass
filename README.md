@@ -179,6 +179,143 @@ Set these via Helm (`--set`) or as environment variables on the container:
 
 See `helm show values oci://ghcr.io/unishsys/charts/spyglass` for the full list.
 
+## Helm configuration
+
+The chart is built for real clusters — scheduling onto tainted pools, policy
+engines, private registries, HA, and locked-down security all have first-class
+flags. Pass them with `--set`/`--set-json`, or (recommended) a values file:
+`helm upgrade --install spyglass oci://ghcr.io/unishsys/charts/spyglass -n spyglass -f my-values.yaml`.
+
+### Scheduling & availability
+
+| Value | Default | Purpose |
+| --- | --- | --- |
+| `replicaCount` | `2` | Number of dashboard pods. |
+| `nodeSelector` | `{}` | Pin pods to a node pool. |
+| `tolerations` | `[]` | Schedule onto tainted nodes (spot pools, GPU, control-plane). |
+| `affinity` | `{}` | Node/pod (anti-)affinity. |
+| `topologySpreadConstraints` | `[]` | Spread replicas across zones/nodes. |
+| `priorityClassName` | `""` | Protect from eviction/preemption (e.g. on spot). |
+| `podDisruptionBudget.enabled` | `false` | Keep the UI up during node drains. `minAvailable`/`maxUnavailable` configurable. |
+| `terminationGracePeriodSeconds` | `30` | Graceful-shutdown window (the app drains in-flight requests). |
+| `revisionHistoryLimit` | `3` | ReplicaSets kept for rollback. |
+| `strategy` | `{}` | Deployment update strategy (e.g. `maxUnavailable: 0`). |
+| `startupProbe` / `livenessProbe` / `readinessProbe` | tuned | Probe timing (path/port fixed to `/ping`). |
+
+### Security & policy
+
+| Value | Default | Purpose |
+| --- | --- | --- |
+| `podSecurityContext` | restricted, uid `65532` | Pod-level context. On OpenShift, drop the fixed UIDs so the SCC assigns them. |
+| `securityContext` | restricted | Container-level (no-priv-escalation, read-only rootfs, drop ALL caps). |
+| `rbac.create` | `true` | Set `false` to manage the cluster-scoped ClusterRole/Binding yourself. |
+| `serviceAccount.annotations` | `{}` | Cloud workload identity (AKS/EKS/GKE). |
+| `commonLabels` / `commonAnnotations` | `{}` | Applied to **every** object — for OPA Gatekeeper / Kyverno requirements or cost tags. |
+| `podLabels` / `podAnnotations` | `{}` | Service-mesh injection, Prometheus scrape hints. |
+| `networkPolicy.enabled` | `false` | Restrict inbound to the UI port; `allowedNamespaces` whitelists callers. |
+
+### Image, networking & storage
+
+| Value | Default | Purpose |
+| --- | --- | --- |
+| `image.repository` / `image.tag` | `ghcr.io/unishsys/spyglass` / appVersion | Use a mirrored image / pin a version. |
+| `imagePullSecrets` | `[]` | Pull from a private/mirrored registry (air-gapped). |
+| `service.type` / `service.annotations` | `ClusterIP` / `{}` | e.g. an internal cloud load balancer. |
+| `ingress.*` | disabled | Expose the UI via Ingress + TLS. |
+| `extraVolumes` / `extraVolumeMounts` | `[]` | Mount e.g. a corporate CA bundle (rootfs is read-only). |
+| `extraEnv` | `[]` | Additional environment variables. |
+
+### Recipes
+
+**Schedule onto a tainted spot pool (AKS) and survive reclamation:**
+```yaml
+tolerations:
+  - key: kubernetes.azure.com/scalesetpriority
+    operator: Equal
+    value: spot
+    effect: NoSchedule
+priorityClassName: system-cluster-critical
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+```
+(GKE spot uses `cloud.google.com/gke-spot=true:NoSchedule`; control-plane nodes use `node-role.kubernetes.io/control-plane:NoSchedule`.)
+
+**High availability across zones:**
+```yaml
+replicaCount: 3
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app: spyglass
+podDisruptionBudget: { enabled: true, minAvailable: 2 }
+```
+
+**Private / air-gapped registry:**
+```yaml
+image:
+  repository: registry.internal/spyglass
+imagePullSecrets:
+  - name: internal-registry
+```
+
+**OpenShift (let the SCC assign UIDs):** Helm *merges* maps, so you must
+null out the default UIDs (not just omit them):
+```yaml
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: null
+  runAsGroup: null
+  fsGroup: null
+  seccompProfile:
+    type: RuntimeDefault
+```
+
+**Cloud workload identity (AKS shown):**
+```yaml
+serviceAccount:
+  annotations:
+    azure.workload.identity/client-id: <client-id>
+podLabels:
+  azure.workload.identity/use: "true"
+```
+
+**Internal load balancer instead of an Ingress (AKS shown):**
+```yaml
+service:
+  type: LoadBalancer
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+```
+
+**Lock down inbound traffic to the ingress controller only:**
+```yaml
+networkPolicy:
+  enabled: true
+  allowedNamespaces: [ingress-nginx]
+```
+
+**Let your security team own RBAC** (chart creates only the ServiceAccount):
+```yaml
+rbac:
+  create: false
+```
+
+**Trust a corporate/self-signed CA:**
+```yaml
+extraVolumes:
+  - name: ca-bundle
+    configMap: { name: corp-ca }
+extraVolumeMounts:
+  - name: ca-bundle
+    mountPath: /etc/ssl/certs/corp-ca.crt
+    subPath: ca.crt
+    readOnly: true
+```
+
 ## Support & legal
 
 - Docs & guides: https://spyglass.sh

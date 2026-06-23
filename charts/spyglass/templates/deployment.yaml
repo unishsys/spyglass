@@ -5,8 +5,17 @@ metadata:
   name: spyglass
   labels:
     {{- include "spyglass.labels" . | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- with .Values.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "spyglass.selectorLabels" . | nindent 6 }}
@@ -14,8 +23,51 @@ spec:
     metadata:
       labels:
         {{- include "spyglass.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # Roll the pods when the auth token / license Secret changes (env from
+        # secretKeyRef isn't hot-reloaded otherwise).
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.commonAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       serviceAccountName: spyglass
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ . }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - name: spyglass
         image: "{{ include "spyglass.image" . }}"
@@ -62,26 +114,38 @@ spec:
         - name: http
           containerPort: {{ .Values.service.port }}
           protocol: TCP
+        {{- with .Values.startupProbe }}
+        startupProbe:
+          httpGet:
+            path: /ping
+            port: {{ $.Values.service.port }}
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         readinessProbe:
           httpGet:
             path: /ping
             port: {{ .Values.service.port }}
-          initialDelaySeconds: 5
-          periodSeconds: 10
+          {{- with .Values.readinessProbe }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
         livenessProbe:
           httpGet:
             path: /ping
             port: {{ .Values.service.port }}
-          initialDelaySeconds: 15
-          periodSeconds: 20
+          {{- with .Values.livenessProbe }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+        {{- with .Values.securityContext }}
         securityContext:
-          runAsNonRoot: true
-          runAsUser: 65532
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop: ["ALL"]
-          seccompProfile:
-            type: RuntimeDefault
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
+        {{- with .Values.extraVolumeMounts }}
+        volumeMounts:
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

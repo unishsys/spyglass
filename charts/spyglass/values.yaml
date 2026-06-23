@@ -7,9 +7,18 @@ image:
   tag: ""
   pullPolicy: IfNotPresent
 
+# Image pull secrets for a private or mirrored registry (air-gapped / enterprise
+# installs that re-host the image). References Secrets in the release namespace.
+imagePullSecrets: []
+#  - name: my-registry-cred
+
 service:
   type: ClusterIP
   port: 8081
+  # Annotations on the Service — e.g. an internal cloud load balancer:
+  #   service.beta.kubernetes.io/azure-load-balancer-internal: "true"   (AKS)
+  #   service.beta.kubernetes.io/aws-load-balancer-internal: "true"     (EKS)
+  annotations: {}
 
 # Authentication. Spyglass has full cluster read/write access, so the SECURE
 # default is `token`: an auth token is auto-generated (and kept stable across
@@ -59,3 +68,124 @@ resources:
   limits:
     memory: "128Mi"
     cpu: "100m"
+
+# --- RBAC / identity ---------------------------------------------------------
+# The chart always creates the ServiceAccount the pod runs as. Set rbac.create
+# to false to manage the (cluster-scoped) ClusterRole + ClusterRoleBinding
+# yourself — e.g. when a security team owns RBAC (separation of duties).
+rbac:
+  create: true
+
+serviceAccount:
+  # Annotations on the ServiceAccount — used for cloud workload identity:
+  #   azure.workload.identity/client-id: <client-id>        (AKS)
+  #   eks.amazonaws.com/role-arn: arn:aws:iam::...:role/... (EKS / IRSA)
+  #   iam.gke.io/gcp-service-account: <gsa>@<project>...    (GKE)
+  annotations: {}
+
+# --- Labels / annotations applied to all chart-managed objects ---------------
+# Handy for cost allocation, ownership, or satisfying admission policies
+# (OPA Gatekeeper / Kyverno) that require specific labels/annotations.
+commonLabels: {}
+commonAnnotations: {}
+
+# Pod-only metadata. podAnnotations is where service-mesh sidecar injection and
+# Prometheus scrape hints go (e.g. linkerd.io/inject: enabled,
+# prometheus.io/scrape: "true").
+podAnnotations: {}
+podLabels: {}
+
+# --- Security context --------------------------------------------------------
+# Restricted-by-default (passes the Pod Security "restricted" profile). On
+# OpenShift, drop the fixed UIDs so the SCC can assign them — set
+# podSecurityContext to {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+# --- Scheduling --------------------------------------------------------------
+# Pin/avoid nodes. The most common need: tolerate a tainted node pool so the
+# pod can schedule at all (e.g. an AKS spot pool), and spread replicas for HA.
+nodeSelector: {}
+
+tolerations: []
+#  - key: kubernetes.azure.com/scalesetpriority   # AKS spot pool
+#    operator: Equal
+#    value: spot
+#    effect: NoSchedule
+
+affinity: {}
+
+# Spread the replicas across zones/nodes for availability.
+topologySpreadConstraints: []
+#  - maxSkew: 1
+#    topologyKey: topology.kubernetes.io/zone
+#    whenUnsatisfiable: ScheduleAnyway
+#    labelSelector:
+#      matchLabels:
+#        app: spyglass
+
+# Protect the dashboard from preemption/eviction under pressure — useful on
+# spot/preemptible pools. e.g. "system-cluster-critical" or your own class.
+priorityClassName: ""
+
+# --- Lifecycle / rollout -----------------------------------------------------
+terminationGracePeriodSeconds: 30
+revisionHistoryLimit: 3
+# Deployment update strategy. Default Helm/K8s rolling update; override to e.g.
+# {type: RollingUpdate, rollingUpdate: {maxUnavailable: 0, maxSurge: 1}} for
+# zero-downtime upgrades.
+strategy: {}
+
+# --- Probes (HTTP GET /ping) -------------------------------------------------
+# Only the timing fields — the path/port are fixed. Loosen these on slow
+# clusters, or add a startupProbe for slow first starts.
+livenessProbe:
+  initialDelaySeconds: 15
+  periodSeconds: 20
+readinessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 10
+# Opt-in. e.g. {failureThreshold: 30, periodSeconds: 5} gives ~150s to start.
+startupProbe: {}
+
+# --- Extra volumes -----------------------------------------------------------
+# Mount additional volumes — e.g. a corporate/self-signed CA bundle the app
+# should trust. Mount read-only; the root filesystem is read-only.
+extraVolumes: []
+#  - name: ca-bundle
+#    configMap:
+#      name: my-ca-bundle
+extraVolumeMounts: []
+#  - name: ca-bundle
+#    mountPath: /etc/ssl/certs/extra-ca.crt
+#    subPath: ca.crt
+#    readOnly: true
+
+# --- High availability -------------------------------------------------------
+# A PodDisruptionBudget keeps the dashboard up during voluntary disruptions
+# (node drains, upgrades, spot reclamation). Set only one of minAvailable /
+# maxUnavailable. Needs replicaCount > 1 to be meaningful.
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  maxUnavailable: ""
+
+# --- Network policy ----------------------------------------------------------
+# Restrict who can reach the dashboard port. Egress is left open (the app must
+# reach the API server, metrics, and optionally Ollama). allowedNamespaces is a
+# list of namespace names allowed to connect; empty = allow from anywhere.
+networkPolicy:
+  enabled: false
+  allowedNamespaces: []
+#    - ingress-nginx

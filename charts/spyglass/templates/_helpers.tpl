@@ -8,6 +8,9 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version }}
 app: spyglass
+{{- with .Values.commonLabels }}
+{{ toYaml . }}
+{{- end }}
 {{- end -}}
 
 {{/*
