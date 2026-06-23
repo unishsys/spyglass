@@ -297,6 +297,9 @@ networkPolicy:
   enabled: true
   allowedNamespaces: [ingress-nginx]
 ```
+> Heads-up: with `allowedNamespaces` set, some CNIs (e.g. Calico) also block the
+> kubelet's health probes (they come from the node, not a namespace), causing a
+> restart loop. Confirm your CNI permits node→pod probes, or allow the node CIDR.
 
 **Let your security team own RBAC** (chart creates only the ServiceAccount):
 ```yaml

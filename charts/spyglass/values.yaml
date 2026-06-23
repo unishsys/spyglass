@@ -185,6 +185,12 @@ podDisruptionBudget:
 # Restrict who can reach the dashboard port. Egress is left open (the app must
 # reach the API server, metrics, and optionally Ollama). allowedNamespaces is a
 # list of namespace names allowed to connect; empty = allow from anywhere.
+#
+# CAVEAT: when allowedNamespaces is set, the rule restricts the dashboard port to
+# those namespaces. kubelet liveness/readiness probes come from the node (not a
+# namespace), and some CNIs (e.g. Calico) will then block them — causing a
+# restart loop. If you set allowedNamespaces, confirm your CNI still permits
+# node→pod health probes, or also allow the node/pod CIDR.
 networkPolicy:
   enabled: false
   allowedNamespaces: []

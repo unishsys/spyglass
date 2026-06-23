@@ -43,10 +43,10 @@ rules:
   verbs: ["get"]
 - apiGroups: [""]
   resources: ["configmaps"]
-  verbs: ["get", "list", "create", "update", "patch"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
 - apiGroups: [""]
   resources: ["services"]
-  verbs: ["get", "list", "create", "delete"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
 # EndpointSlices back the "which pods serve this service" view (overview
 # endpoint health + the describe-service tool). discovery.k8s.io/v1 replaces the
 # deprecated core/v1 Endpoints. Read-only.
@@ -84,11 +84,19 @@ rules:
 - apiGroups: ["gateway.networking.k8s.io"]
   resources: ["gatewayclasses"]
   verbs: ["get", "list"]
-# cert-manager (TLS certificates) and external-dns (DNS records) — read-only, so
-# the dashboard can surface the domain → DNS → TLS → gateway → route → service
-# chain. All optional: the app degrades gracefully when these CRDs are absent.
+# cert-manager + external-dns power the domain → DNS → TLS → gateway → route →
+# service chain. All optional: the app degrades gracefully when these CRDs are
+# absent.
+#
+# Certificates are CREATED/edited/deleted by the Expose-an-app flow, the "Create
+# certificate" dialog, and the generic YAML editor — so they need full write.
+# Issuers/ClusterIssuers stay read-only (the UI only picks an existing one), as
+# do external-dns DNSEndpoints.
 - apiGroups: ["cert-manager.io"]
-  resources: ["certificates", "clusterissuers", "issuers"]
+  resources: ["certificates"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: ["cert-manager.io"]
+  resources: ["clusterissuers", "issuers"]
   verbs: ["get", "list"]
 - apiGroups: ["externaldns.k8s.io"]
   resources: ["dnsendpoints"]
